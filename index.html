@@ -35,7 +35,271 @@
 <!-- ===== SAVE THIS SPACE ==============================================
      This box is empty on purpose. Leave it here. We will use it later.
      ===================================================================== -->
-<div class="showcase"></div>
+<div class="showcase"><div class="sb-stage">
+  <button class="sb-name" type="button" data-who="spongebob">Spongebob</button>
+  <button class="sb-name" type="button" data-who="patrick">Patrick</button>
+  <button class="sb-name" type="button" data-who="squidward">Squidward</button>
+
+  <div class="sb-card" role="dialog" aria-live="polite" aria-hidden="true">
+    <div class="sb-card-title"></div>
+    <div class="sb-card-fact"></div>
+    <div class="sb-card-buttons">
+      <button class="sb-btn sb-more" type="button">Another fact</button>
+      <button class="sb-btn sb-close" type="button">Close</button>
+    </div>
+  </div>
+</div>
+<div class="sb-hint">Click a name to see a fun fact!</div>
+
+<!-- CSS: styles for the stage, the name buttons and the fact card (every rule is scoped to .showcase) -->
+<style>
+  .showcase .sb-stage {
+    position: relative;
+    width: 100%;
+    height: clamp(280px, 70vw, 440px);
+    background: #686A6C;
+    border: 3px solid #FFFFFF;
+    border-radius: 16px;
+    overflow: hidden;
+    box-sizing: border-box;
+    font-family: "ADLaM Display", system-ui, sans-serif;
+  }
+  .showcase .sb-name {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0.4em 0.9em;
+    font-family: inherit;
+    font-size: clamp(18px, 4.5vw, 30px);
+    line-height: 1.2;
+    color: #FFFFFF;
+    background: #686A6C;
+    border: 3px solid #FFFFFF;
+    border-radius: 999px;
+    white-space: nowrap;
+    cursor: pointer;
+    will-change: transform;
+    transition: background 0.2s, color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .showcase .sb-name:hover,
+  .showcase .sb-name:focus-visible,
+  .showcase .sb-name.sb-hit {
+    outline: none;
+    background: #FFFFFF;
+    color: #686A6C;
+  }
+  .showcase .sb-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(88%, 420px);
+    box-sizing: border-box;
+    padding: 20px;
+    background: #FFFFFF;
+    color: #686A6C;
+    border: 3px solid #686A6C;
+    border-radius: 16px;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.8);
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 2;
+  }
+  .showcase .sb-card.sb-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .showcase .sb-card-title {
+    font-size: clamp(22px, 5vw, 30px);
+    margin-bottom: 8px;
+  }
+  .showcase .sb-card-fact {
+    font-size: clamp(15px, 3.6vw, 18px);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .showcase .sb-card-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .showcase .sb-btn {
+    font-family: inherit;
+    font-size: 15px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 2px solid #686A6C;
+    cursor: pointer;
+  }
+  .showcase .sb-more {
+    background: #686A6C;
+    color: #FFFFFF;
+  }
+  .showcase .sb-close {
+    background: #FFFFFF;
+    color: #686A6C;
+  }
+  .showcase .sb-hint {
+    margin-top: 8px;
+    font-family: "ADLaM Display", system-ui, sans-serif;
+    font-size: 14px;
+    color: #686A6C;
+    text-align: center;
+  }
+</style>
+
+<!-- JavaScript: bounces the names off the walls and shows a fun fact when a name is clicked -->
+<script>
+(function () {
+  var root = document.currentScript.parentElement;
+  var stage = root.querySelector(".sb-stage");
+  var card = root.querySelector(".sb-card");
+  var cardTitle = root.querySelector(".sb-card-title");
+  var cardFact = root.querySelector(".sb-card-fact");
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var SPEED = 1.8;
+  var names = [];
+  var current = null;
+  var factIndex = {};
+
+  var facts = {
+    spongebob: {
+      title: "Spongebob",
+      list: [
+        "He lives in a pineapple under the sea in the town of Bikini Bottom.",
+        "He works as the fry cook at the Krusty Krab, making Krabby Patties.",
+        "His pet snail, Gary, meows like a cat.",
+        "The show was created by Stephen Hillenburg, who used to teach marine biology."
+      ]
+    },
+    patrick: {
+      title: "Patrick",
+      list: [
+        "Patrick is a pink starfish and Spongebob's best friend.",
+        "He lives under a rock, just a couple of doors down from Spongebob.",
+        "His favorite hobby is doing absolutely nothing, and he's great at it."
+      ]
+    },
+    squidward: {
+      title: "Squidward",
+      list: [
+        "Even though his name says squid, Squidward is actually an octopus.",
+        "He lives in a stone head-shaped house between Spongebob and Patrick.",
+        "He loves playing the clarinet, even though his neighbors don't love hearing it.",
+        "He works as the cashier at the Krusty Krab, right next to Spongebob."
+      ]
+    }
+  };
+
+  function randomDirection() {
+    var angle = Math.random() * Math.PI * 2;
+    return { vx: Math.cos(angle) * SPEED, vy: Math.sin(angle) * SPEED };
+  }
+
+  function draw(n) {
+    n.el.style.transform = "translate(" + n.x + "px," + n.y + "px)";
+  }
+
+  function place(n) {
+    n.x = Math.random() * Math.max(stage.clientWidth - n.el.offsetWidth, 0);
+    n.y = Math.random() * Math.max(stage.clientHeight - n.el.offsetHeight, 0);
+    var d = randomDirection();
+    n.vx = d.vx;
+    n.vy = d.vy;
+    draw(n);
+  }
+
+  function flash(n) {
+    n.el.classList.add("sb-hit");
+    clearTimeout(n.timer);
+    n.timer = setTimeout(function () { n.el.classList.remove("sb-hit"); }, 180);
+  }
+
+  function showFact(who) {
+    var data = facts[who];
+    if (factIndex[who] === undefined) {
+      factIndex[who] = Math.floor(Math.random() * data.list.length);
+    } else {
+      factIndex[who] = (factIndex[who] + 1) % data.list.length;
+    }
+    current = who;
+    cardTitle.textContent = data.title;
+    cardFact.textContent = data.list[factIndex[who]];
+    card.classList.add("sb-open");
+    card.setAttribute("aria-hidden", "false");
+  }
+
+  function closeCard() {
+    current = null;
+    card.classList.remove("sb-open");
+    card.setAttribute("aria-hidden", "true");
+  }
+
+  stage.querySelectorAll(".sb-name").forEach(function (el) {
+    var n = { el: el, x: 0, y: 0, vx: 0, vy: 0, paused: false, timer: null };
+    names.push(n);
+    el.addEventListener("mouseenter", function () { n.paused = true; });
+    el.addEventListener("mouseleave", function () { n.paused = false; });
+    el.addEventListener("click", function (e) {
+      e.stopPropagation();
+      showFact(el.getAttribute("data-who"));
+    });
+  });
+
+  root.querySelector(".sb-more").addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (current) showFact(current);
+  });
+  root.querySelector(".sb-close").addEventListener("click", function (e) {
+    e.stopPropagation();
+    closeCard();
+  });
+  card.addEventListener("click", function (e) { e.stopPropagation(); });
+  stage.addEventListener("click", closeCard);
+
+  function step() {
+    var w = stage.clientWidth;
+    var h = stage.clientHeight;
+    names.forEach(function (n) {
+      if (n.paused || current) return;
+      var maxX = Math.max(w - n.el.offsetWidth, 0);
+      var maxY = Math.max(h - n.el.offsetHeight, 0);
+      n.x += n.vx;
+      n.y += n.vy;
+      if (n.x <= 0) { n.x = 0; n.vx = Math.abs(n.vx); flash(n); }
+      if (n.x >= maxX) { n.x = maxX; n.vx = -Math.abs(n.vx); flash(n); }
+      if (n.y <= 0) { n.y = 0; n.vy = Math.abs(n.vy); flash(n); }
+      if (n.y >= maxY) { n.y = maxY; n.vy = -Math.abs(n.vy); flash(n); }
+      draw(n);
+    });
+    requestAnimationFrame(step);
+  }
+
+  function start() {
+    names.forEach(place);
+    if (!reduceMotion) requestAnimationFrame(step);
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(start);
+  } else {
+    window.addEventListener("load", start);
+  }
+
+  window.addEventListener("resize", function () {
+    names.forEach(function (n) {
+      n.x = Math.min(n.x, Math.max(stage.clientWidth - n.el.offsetWidth, 0));
+      n.y = Math.min(n.y, Math.max(stage.clientHeight - n.el.offsetHeight, 0));
+      draw(n);
+    });
+  });
+})();
+</script></div>
 <!-- Footer: fill in your name -->
 <footer>Built by Carson Boyer &middot; BMIS 235</footer>
 
