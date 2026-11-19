@@ -12,7 +12,7 @@
 body {
     font-family: ADLaM Display, "Calibri", Aldhabi;
     background-color: #000000;
-    color: #686A6C;
+    color: #FFFFFF;
     margin: 0;
     padding: 0 20px 40px 20px;
 }
@@ -54,6 +54,6 @@ p {
 footer {
     text-align: center;
     font-size: 14px;
-    color: #000000;
+    color: #686A6C;
     margin-top: 40px;
 }
